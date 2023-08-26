@@ -1,0 +1,228 @@
+definitions:
+  handler.addUserInput:
+    properties:
+      id:
+        type: integer
+      segmentsToAdd:
+        items:
+          $ref: '#/definitions/repository.Segment'
+        type: array
+      segmentsToDelete:
+        items:
+          $ref: '#/definitions/repository.Segment'
+        type: array
+    type: object
+  handler.errorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  handler.getReportInput:
+    properties:
+      begin_at:
+        type: string
+      end_at:
+        type: string
+      id:
+        type: integer
+    type: object
+  handler.getSegmentsResponse:
+    properties:
+      segments:
+        items:
+          $ref: '#/definitions/repository.Segment'
+        type: array
+    type: object
+  repository.Segment:
+    properties:
+      name:
+        type: string
+    type: object
+  repository.User:
+    properties:
+      id:
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /api/segment:
+    delete:
+      consumes:
+      - application/json
+      operationId: delete-segment
+      parameters:
+      - description: Segment content
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/repository.Segment'
+      responses:
+        "200":
+          description: id
+          schema:
+            type: integer
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        default:
+          description: ""
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+      summary: Delete segment
+      tags:
+      - segment
+    post:
+      consumes:
+      - application/json
+      operationId: create-segment
+      parameters:
+      - description: Segment content
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/repository.Segment'
+      responses:
+        "200":
+          description: id
+          schema:
+            type: integer
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        default:
+          description: ""
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+      summary: Create segment
+      tags:
+      - segment
+  /api/segment/user:
+    post:
+      consumes:
+      - application/json
+      operationId: add-user-to-segment
+      parameters:
+      - description: user id, segments to delete/add
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.addUserInput'
+      responses:
+        "200":
+          description: updated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        default:
+          description: ""
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+      summary: Add user to segment
+      tags:
+      - user
+  /api/user:
+    post:
+      consumes:
+      - application/json
+      operationId: get-user-segments
+      parameters:
+      - description: user id
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/repository.User'
+      responses:
+        "200":
+          description: segments
+          schema:
+            $ref: '#/definitions/handler.getSegmentsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        default:
+          description: ""
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+      summary: Get User segments
+      tags:
+      - user
+  /api/user/history:
+    post:
+      consumes:
+      - application/json
+      operationId: get-report
+      parameters:
+      - description: user id, interval begin and end
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.getReportInput'
+      responses:
+        "200":
+          description: link
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+        default:
+          description: ""
+          schema:
+            $ref: '#/definitions/handler.errorResponse'
+      summary: Get Report
+      tags:
+      - history
+swagger: "2.0"
