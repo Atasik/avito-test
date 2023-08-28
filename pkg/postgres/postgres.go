@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"database/sql"
@@ -12,13 +12,6 @@ import (
 var (
 	ErrAlreadyExists = errors.New("already exists")
 	ErrNotFound      = errors.New("not found")
-)
-
-const (
-	usersTable         = "users"
-	segmentsTable      = "segments"
-	usersSegmentsTable = "users_segments"
-	historyTable       = "history"
 )
 
 // func (User) TableName() string {

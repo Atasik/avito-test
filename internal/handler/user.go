@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"segmenter/internal/repository"
+	"segmenter/internal/domain"
 )
 
 type addUserInput struct {
-	Id               int                  `json:"id"`
-	SegmentsToDelete []repository.Segment `json:"segmentsToDelete"`
-	SegmentsToAdd    []repository.Segment `json:"segmentsToAdd"`
+	ID               int              `json:"id"`
+	SegmentsToDelete []domain.Segment `json:"segmentsToDelete"`
+	SegmentsToAdd    []domain.Segment `json:"segmentsToAdd"`
 }
 
 // @Summary Add user to segment
@@ -41,16 +41,17 @@ func (h *Handler) AddUserToSegment(w http.ResponseWriter, r *http.Request) {
 	var inp addUserInput
 	err = json.Unmarshal(body, &inp)
 	if err != nil {
-		newErrorResponse(w, "cant unpack payload", http.StatusBadRequest)
+		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
 
-	err = h.Services.UpsertUser(inp.Id, inp.SegmentsToAdd, inp.SegmentsToDelete)
+	err = h.Services.UpsertUser(inp.ID, inp.SegmentsToAdd, inp.SegmentsToDelete)
 	if err != nil {
 		newErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// TODO: refactor, remove hardcode
 	resp, err := json.Marshal(map[string]interface{}{
 		"updated": "done",
 	})
@@ -71,7 +72,7 @@ func (h *Handler) AddUserToSegment(w http.ResponseWriter, r *http.Request) {
 // @ID	 get-user-segments
 // @Accept json
 // @Product json
-// @Param   input body repository.User true "user id"
+// @Param   input body domain.User true "user id"
 // @Success	200		    {object}	getSegmentsResponse     "segments"
 // @Failure	400,404		{object}	errorResponse
 // @Failure	500			{object}	errorResponse
@@ -91,13 +92,13 @@ func (h *Handler) GetUserSegments(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body.Close()
 
-	var user repository.User
+	var user domain.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		newErrorResponse(w, "cant unpack payload", http.StatusBadRequest)
+		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
-	segments, err := h.Services.GetUserSegments(user.Id)
+	segments, err := h.Services.GetUserSegments(user.ID)
 	if err != nil {
 		newErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return

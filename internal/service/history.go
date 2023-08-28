@@ -9,7 +9,7 @@ import (
 )
 
 type History interface {
-	CreateReport(start, end time.Time, userId int) (string, error)
+	CreateReport(period time.Time, userID int) (string, error)
 }
 
 type HistoryService struct {
@@ -20,14 +20,13 @@ func NewHistoryService(historyRepo repository.HistoryRepo) *HistoryService {
 	return &HistoryService{historyRepo: historyRepo}
 }
 
-func (s *HistoryService) CreateReport(start, end time.Time, userId int) (string, error) {
-	history, err := s.historyRepo.GetHistoryForPeriod(start, end, userId)
+func (s *HistoryService) CreateReport(period time.Time, userID int) (string, error) {
+	history, err := s.historyRepo.GetHistoryForPeriod(period, userID)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Println(history)
-
+	// TODO: refactor, remove hardcode
 	reportsPath := "./reports/"
 	reportName := fmt.Sprintf("%d.csv", time.Now().Unix())
 
@@ -42,8 +41,11 @@ func (s *HistoryService) CreateReport(start, end time.Time, userId int) (string,
 	defer writer.Flush()
 
 	for _, operation := range history {
-		row := []string{fmt.Sprintf("%d", operation.UserId), operation.Segment, operation.Operation, operation.CreatedAt.Format(time.DateTime)}
-		writer.Write(row)
+		row := []string{fmt.Sprintf("%d", operation.UserID), operation.Segment, operation.Operation, time.Time(operation.CreatedAt).Format(time.DateTime)}
+		err := writer.Write(row)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return reportName, nil

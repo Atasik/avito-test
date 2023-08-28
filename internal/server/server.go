@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+const (
+	maxHeaderBytes = 1 << 20
+	readTimeout    = 20 * time.Second
+	writeTimeout   = 20 * time.Second
+)
+
 type Server struct {
 	httpServer *http.Server
 }
@@ -15,9 +21,9 @@ func NewServer(port string, handler http.Handler) *Server {
 		httpServer: &http.Server{
 			Addr:           ":" + port,
 			Handler:        handler,
-			MaxHeaderBytes: 1 << 20,
-			ReadTimeout:    10 * time.Second,
-			WriteTimeout:   10 * time.Second,
+			MaxHeaderBytes: maxHeaderBytes,
+			ReadTimeout:    readTimeout,
+			WriteTimeout:   writeTimeout,
 		},
 	}
 }

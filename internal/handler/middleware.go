@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func panic(next http.Handler) http.Handler {
+func panicMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("panic middleware", r.URL.Path)
 		defer func() {

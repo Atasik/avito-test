@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"segmenter/pkg/timejson"
 	"time"
 )
 
 type getReportInput struct {
-	Id      int       `json:"id"`
-	BeginAt time.Time `json:"begin_at"`
-	EndAt   time.Time `json:"end_at"`
+	ID     int                    `json:"id"`
+	Period timejson.YearMonthTime `json:"period"`
 }
 
 // @Summary Get Report
@@ -41,18 +41,19 @@ func (h *Handler) GetReport(w http.ResponseWriter, r *http.Request) {
 	var inp getReportInput
 	err = json.Unmarshal(body, &inp)
 	if err != nil {
-		newErrorResponse(w, "cant unpack payload", http.StatusBadRequest)
+		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
 
-	reportName, err := h.Services.CreateReport(inp.BeginAt, inp.EndAt, inp.Id)
+	reportName, err := h.Services.CreateReport(time.Time(inp.Period), inp.ID)
 	if err != nil {
 		newErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// TODO: refactor, remove hardcode, create cfg
 	resp, err := json.Marshal(map[string]interface{}{
-		"link": "http://localhost:8080/reports/" + reportName,
+		"link": r.Host + "/reports/" + reportName,
 	})
 	if err != nil {
 		newErrorResponse(w, `can't create payload`, http.StatusInternalServerError)

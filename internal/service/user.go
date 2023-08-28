@@ -1,12 +1,14 @@
 package service
 
 import (
+	"segmenter/internal/domain"
 	"segmenter/internal/repository"
 )
 
 type User interface {
-	UpsertUser(id int, segmentsToAdd, segmentToDelete []repository.Segment) error
-	GetUserSegments(id int) ([]repository.Segment, error)
+	UpsertUser(userID int, segmentsToAdd, segmentToDelete []domain.Segment) error
+	GetUserSegments(userID int) ([]domain.Segment, error)
+	DeleteExpiredSegments() error
 }
 
 type UserService struct {
@@ -17,10 +19,14 @@ func NewUserService(userRepo repository.UserRepo) *UserService {
 	return &UserService{userRepo: userRepo}
 }
 
-func (s *UserService) UpsertUser(id int, segmentsToAdd, segmentToDelete []repository.Segment) error {
-	return s.userRepo.UpsertUser(id, segmentsToAdd, segmentToDelete)
+func (s *UserService) UpsertUser(userID int, segmentsToAdd, segmentToDelete []domain.Segment) error {
+	return s.userRepo.UpsertUser(userID, segmentsToAdd, segmentToDelete)
 }
 
-func (s *UserService) GetUserSegments(id int) ([]repository.Segment, error) {
-	return s.userRepo.GetUserSegments(id)
+func (s *UserService) GetUserSegments(userID int) ([]domain.Segment, error) {
+	return s.userRepo.GetUserSegments(userID)
+}
+
+func (s *UserService) DeleteExpiredSegments() error {
+	return s.userRepo.DeleteExpiredSegments()
 }

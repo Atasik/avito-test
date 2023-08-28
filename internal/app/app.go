@@ -9,9 +9,15 @@ import (
 	"segmenter/internal/repository"
 	"segmenter/internal/server"
 	"segmenter/internal/service"
+	"segmenter/pkg/postgres"
 	"syscall"
+	"time"
 
 	"github.com/spf13/viper"
+)
+
+const (
+	interval = 30 * time.Second
 )
 
 // @title Avito Backend Trainee Assignment
@@ -22,10 +28,10 @@ import (
 // @BasePath /
 func Run(configPath string) {
 	if err := initConfig(configPath); err != nil {
-		log.Fatal("Error occured while loading config: ", err.Error())
+		log.Fatal("Error occurred while loading config: ", err.Error())
 	}
 
-	db, err := repository.NewPostgresqlDB(repository.Config{
+	db, err := postgres.NewPostgresqlDB(postgres.Config{
 		Host:     viper.GetString("db.host"),
 		Port:     viper.GetString("db.port"),
 		Username: viper.GetString("db.username"),
@@ -34,7 +40,7 @@ func Run(configPath string) {
 		Password: os.Getenv("db_password"),
 	})
 	if err != nil {
-		log.Fatal("Error occured while loading DB: ", err.Error())
+		log.Fatal("Error occurred while loading DB: ", err.Error())
 	}
 
 	repos := repository.NewRepository(db)
@@ -46,26 +52,45 @@ func Run(configPath string) {
 	mux := h.InitRoutes()
 
 	srv := server.NewServer(viper.GetString("port"), mux)
+	ticker := time.NewTicker(interval)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+
+	// TODO: refactor
 	go func() {
 		if err := srv.Run(); err != nil {
 			log.Println("error happened: ", err.Error())
 		}
 	}()
 
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := services.DeleteExpiredSegments(); err != nil {
+					log.Println("error happened: ", err.Error())
+				}
+				log.Println("database was updated")
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
 	log.Println("Application is running")
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
 	log.Println("Application is shutting down")
 
 	if err := srv.Shutdown(context.Background()); err != nil {
-		log.Printf("error occured on server shutting down: %s", err.Error())
+		log.Printf("error occurred on server shutting down: %s", err.Error())
 	}
 
 	if err := db.Close(); err != nil {
-		log.Printf("error occured on db connection close: %s", err.Error())
+		log.Printf("error occurred on db connection close: %s", err.Error())
 	}
 }
 

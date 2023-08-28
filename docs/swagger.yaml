@@ -1,15 +1,27 @@
 definitions:
+  domain.Segment:
+    properties:
+      expired_at:
+        type: string
+      name:
+        type: string
+    type: object
+  domain.User:
+    properties:
+      id:
+        type: integer
+    type: object
   handler.addUserInput:
     properties:
       id:
         type: integer
       segmentsToAdd:
         items:
-          $ref: '#/definitions/repository.Segment'
+          $ref: '#/definitions/domain.Segment'
         type: array
       segmentsToDelete:
         items:
-          $ref: '#/definitions/repository.Segment'
+          $ref: '#/definitions/domain.Segment'
         type: array
     type: object
   handler.errorResponse:
@@ -19,29 +31,17 @@ definitions:
     type: object
   handler.getReportInput:
     properties:
-      begin_at:
-        type: string
-      end_at:
-        type: string
       id:
         type: integer
+      period:
+        type: string
     type: object
   handler.getSegmentsResponse:
     properties:
       segments:
         items:
-          $ref: '#/definitions/repository.Segment'
+          $ref: '#/definitions/domain.Segment'
         type: array
-    type: object
-  repository.Segment:
-    properties:
-      name:
-        type: string
-    type: object
-  repository.User:
-    properties:
-      id:
-        type: integer
     type: object
 info:
   contact: {}
@@ -57,7 +57,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/repository.Segment'
+          $ref: '#/definitions/domain.Segment'
       responses:
         "200":
           description: id
@@ -92,7 +92,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/repository.Segment'
+          $ref: '#/definitions/domain.Segment'
       responses:
         "200":
           description: id
@@ -164,7 +164,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/repository.User'
+          $ref: '#/definitions/domain.User'
       responses:
         "200":
           description: segments

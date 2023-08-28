@@ -33,7 +33,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/repository.Segment"
+                            "$ref": "#/definitions/domain.Segment"
                         }
                     }
                 ],
@@ -86,7 +86,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/repository.Segment"
+                            "$ref": "#/definitions/domain.Segment"
                         }
                     }
                 ],
@@ -196,7 +196,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/repository.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     }
                 ],
@@ -291,6 +291,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.Segment": {
+            "type": "object",
+            "properties": {
+                "expired_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.User": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
         "handler.addUserInput": {
             "type": "object",
             "properties": {
@@ -300,13 +319,13 @@ const docTemplate = `{
                 "segmentsToAdd": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/repository.Segment"
+                        "$ref": "#/definitions/domain.Segment"
                     }
                 },
                 "segmentsToDelete": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/repository.Segment"
+                        "$ref": "#/definitions/domain.Segment"
                     }
                 }
             }
@@ -322,14 +341,11 @@ const docTemplate = `{
         "handler.getReportInput": {
             "type": "object",
             "properties": {
-                "begin_at": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
+                },
+                "period": {
+                    "type": "string"
                 }
             }
         },
@@ -339,24 +355,8 @@ const docTemplate = `{
                 "segments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/repository.Segment"
+                        "$ref": "#/definitions/domain.Segment"
                     }
-                }
-            }
-        },
-        "repository.Segment": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "repository.User": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
                 }
             }
         }

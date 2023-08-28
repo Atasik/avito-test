@@ -22,6 +22,7 @@ type Handler struct {
 func (h *Handler) InitRoutes() http.Handler {
 	r := mux.NewRouter()
 
+	// TODO: remove hardcode
 	staticHandler := http.StripPrefix(
 		"/reports/",
 		http.FileServer(http.Dir("./reports")),
@@ -36,7 +37,7 @@ func (h *Handler) InitRoutes() http.Handler {
 	r.HandleFunc("/api/user", h.GetUserSegments).Methods("POST")
 	r.HandleFunc("/api/user/history", h.GetReport).Methods("POST")
 
-	mux := panic(r)
+	mux := panicMiddleware(r)
 
 	return mux
 }

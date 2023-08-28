@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"segmenter/internal/repository"
+	"segmenter/internal/domain"
 )
 
 // @Summary Create segment
@@ -12,7 +12,7 @@ import (
 // @ID	 create-segment
 // @Accept json
 // @Product json
-// @Param   input body repository.Segment true "Segment content"
+// @Param   input body domain.Segment true "Segment content"
 // @Success	200		    {integer}	integer     "id"
 // @Failure	400,404		{object}	errorResponse
 // @Failure	500			{object}	errorResponse
@@ -32,10 +32,10 @@ func (h *Handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body.Close()
 
-	var segment repository.Segment
+	var segment domain.Segment
 	err = json.Unmarshal(body, &segment)
 	if err != nil {
-		newErrorResponse(w, "cant unpack payload", http.StatusBadRequest)
+		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
 	id, err := h.Services.CreateSegment(segment)
@@ -44,6 +44,7 @@ func (h *Handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: refactor, remove hardcode
 	resp, err := json.Marshal(map[string]interface{}{
 		"id": id,
 	})
@@ -64,7 +65,7 @@ func (h *Handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 // @ID	 delete-segment
 // @Accept json
 // @Product json
-// @Param   input body repository.Segment true "Segment content"
+// @Param   input body domain.Segment true "Segment content"
 // @Success	200		    {integer}	integer     "id"
 // @Failure	400,404		{object}	errorResponse
 // @Failure	500			{object}	errorResponse
@@ -84,10 +85,10 @@ func (h *Handler) DeleteSegment(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body.Close()
 
-	var segment repository.Segment
+	var segment domain.Segment
 	err = json.Unmarshal(body, &segment)
 	if err != nil {
-		newErrorResponse(w, "cant unpack payload", http.StatusBadRequest)
+		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
 	err = h.Services.DeleteSegment(segment)
@@ -96,6 +97,7 @@ func (h *Handler) DeleteSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: refactor, remove hardcode
 	resp, err := json.Marshal(map[string]interface{}{
 		"deleted": "done",
 	})

@@ -2,20 +2,15 @@ package repository
 
 import (
 	"fmt"
+	"segmenter/internal/domain"
+	"segmenter/pkg/postgres"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 )
 
-type History struct {
-	UserId    int       `db:"user_id"`
-	Segment   string    `db:"segment"`
-	Operation string    `db:"operation"`
-	CreatedAt time.Time `db:"created_at"`
-}
-
 type HistoryRepo interface {
-	GetHistoryForPeriod(start, end time.Time, userId int) ([]History, error)
+	GetHistoryForPeriod(period time.Time, userID int) ([]domain.History, error)
 }
 
 type HistoryPostgresqlRepo struct {
@@ -26,13 +21,13 @@ func NewHistoryPostgresqlRepo(db *sqlx.DB) *HistoryPostgresqlRepo {
 	return &HistoryPostgresqlRepo{DB: db}
 }
 
-func (repo *HistoryPostgresqlRepo) GetHistoryForPeriod(start, end time.Time, userId int) ([]History, error) {
-	var history []History
+func (repo *HistoryPostgresqlRepo) GetHistoryForPeriod(period time.Time, userID int) ([]domain.History, error) {
+	var history []domain.History
 
-	query := fmt.Sprintf(`SELECT user_id, segment, operation, created_at FROM %s WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3`, historyTable)
+	query := fmt.Sprintf(`SELECT user_id, segment, operation, created_at FROM %s WHERE user_id = $1 AND date_part('year', created_at) = $2 AND date_part('month', created_at) = $3`, historyTable)
 
-	if err := repo.DB.Select(&history, query, userId, start, end); err != nil {
-		return []History{}, ParsePostgresError(err)
+	if err := repo.DB.Select(&history, query, userID, period.Year(), period.Month()); err != nil {
+		return []domain.History{}, postgres.ParsePostgresError(err)
 	}
 	return history, nil
 }

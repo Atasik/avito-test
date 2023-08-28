@@ -3,7 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"segmenter/internal/repository"
+	"segmenter/internal/domain"
 )
 
 type errorResponse struct {
@@ -11,17 +11,17 @@ type errorResponse struct {
 }
 
 type getSegmentsResponse struct {
-	Data []repository.Segment `json:"segments"`
+	Data []domain.Segment `json:"segments"`
 }
 
 func newErrorResponse(w http.ResponseWriter, msg string, status int) {
-	resp, _ := json.Marshal(errorResponse{msg})
+	resp, _ := json.Marshal(errorResponse{msg}) //nolint:errcheck
 	w.WriteHeader(status)
-	w.Write(resp)
+	w.Write(resp) //nolint:errcheck
 }
 
-func newGetSegmentsResponse(w http.ResponseWriter, segments []repository.Segment, status int) {
-	resp, _ := json.Marshal(getSegmentsResponse{segments})
+func newGetSegmentsResponse(w http.ResponseWriter, segments []domain.Segment, status int) {
+	resp, _ := json.Marshal(getSegmentsResponse{segments}) //nolint:errcheck
 	w.WriteHeader(status)
-	w.Write(resp)
+	w.Write(resp) //nolint:errcheck
 }

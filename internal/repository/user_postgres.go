@@ -2,23 +2,22 @@ package repository
 
 import (
 	"fmt"
+	"segmenter/internal/domain"
+	"segmenter/pkg/postgres"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 )
 
 const (
-	DELETION = "удаление"
-	ADDITION = "добавление"
+	DELETION = "delete"
+	ADDITION = "add"
 )
 
-type User struct {
-	Id int `db:"id" json:"id"`
-}
-
 type UserRepo interface {
-	UpsertUser(id int, segmentsToAdd, segmentsToDelete []Segment) error
-	GetUserSegments(id int) ([]Segment, error)
+	UpsertUser(userID int, segmentsToAdd, segmentsToDelete []domain.Segment) error
+	GetUserSegments(userID int) ([]domain.Segment, error)
+	DeleteExpiredSegments() error
 }
 
 type UserPostgresqlRepo struct {
@@ -29,84 +28,82 @@ func NewUserPostgresqlRepo(db *sqlx.DB) *UserPostgresqlRepo {
 	return &UserPostgresqlRepo{DB: db}
 }
 
-func (repo *UserPostgresqlRepo) UpsertUser(id int, segmentsToAdd, segmentsToDelete []Segment) error {
+func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsToDelete []domain.Segment) error {
 	tx, err := repo.DB.Begin()
 	if err != nil {
-		return ParsePostgresError(err)
+		return postgres.ParsePostgresError(err)
 	}
 
 	query := fmt.Sprintf("INSERT INTO %s (id) VALUES($1) ON CONFLICT(id) DO NOTHING", usersTable)
-	if _, err := tx.Exec(query, id); err != nil {
-		tx.Rollback()
-		return ParsePostgresError(err)
+	if _, err = tx.Exec(query, userID); err != nil {
+		tx.Rollback() //nolint:errcheck
+		return postgres.ParsePostgresError(err)
 	}
 
-	getSegmentIdQuery := fmt.Sprintf("SELECT id FROM %s WHERE name = $1", segmentsTable)
-	insertInHistoryQuery := fmt.Sprintf("INSERT INTO %s(user_id, segment, operation, created_at) VALUES($1, $2, $3, $4)", historyTable)
+	getSegmentIDQuery := fmt.Sprintf("SELECT id FROM %s WHERE name = $1", segmentsTable)
 
-	query = fmt.Sprintf("INSERT INTO %s (user_id, seg_id) VALUES($1, $2)", usersSegmentsTable)
+	queryInterval := fmt.Sprintf("INSERT INTO %s (user_id, seg_id) VALUES($1, $2)", usersSegmentsTable)
+	query = fmt.Sprintf("INSERT INTO %s (user_id, seg_id, expired_at) VALUES($1, $2, $3)", usersSegmentsTable)
 
 	for _, seg := range segmentsToAdd {
 		var segID int
-		row := tx.QueryRow(getSegmentIdQuery, seg.Name)
+		row := tx.QueryRow(getSegmentIDQuery, seg.Name)
 		if err = row.Scan(&segID); err != nil {
-			tx.Rollback()
-			return ParsePostgresError(err)
+			tx.Rollback() //nolint:errcheck
+			return postgres.ParsePostgresError(err)
 		}
 
-		if _, err = tx.Exec(query, id, segID); err != nil {
-			tx.Rollback()
-			return ParsePostgresError(err)
-		}
-
-		if _, err = tx.Exec(insertInHistoryQuery, id, seg.Name, ADDITION, time.Now()); err != nil {
-			tx.Rollback()
-			return ParsePostgresError(err)
+		if time.Time(seg.ExpiredAt).IsZero() {
+			if _, err = tx.Exec(queryInterval, userID, segID); err != nil {
+				tx.Rollback() //nolint:errcheck
+				return postgres.ParsePostgresError(err)
+			}
+		} else {
+			if _, err = tx.Exec(query, userID, segID, time.Time(seg.ExpiredAt)); err != nil {
+				tx.Rollback() //nolint:errcheck
+				return postgres.ParsePostgresError(err)
+			}
 		}
 	}
 
 	query = fmt.Sprintf("DELETE FROM %s WHERE user_id = $1 AND seg_id = $2", usersSegmentsTable)
 	for _, seg := range segmentsToDelete {
 		var segID int
-		row := tx.QueryRow(getSegmentIdQuery, seg.Name)
+		row := tx.QueryRow(getSegmentIDQuery, seg.Name)
 		if err = row.Scan(&segID); err != nil {
-			tx.Rollback()
-			return ParsePostgresError(err)
+			tx.Rollback() //nolint:errcheck
+			return postgres.ParsePostgresError(err)
 		}
 
-		res, err := tx.Exec(query, id, segID)
+		_, err := tx.Exec(query, userID, segID)
 		if err != nil {
-			tx.Rollback()
-			return ParsePostgresError(err)
-		}
-
-		isDeleted, err := res.RowsAffected()
-		if err != nil {
-			tx.Rollback()
-			return ParsePostgresError(err)
-		}
-
-		if isDeleted > 0 {
-			if _, err = tx.Exec(insertInHistoryQuery, id, seg.Name, DELETION, time.Now()); err != nil {
-				tx.Rollback()
-				return ParsePostgresError(err)
-			}
+			tx.Rollback() //nolint:errcheck
+			return postgres.ParsePostgresError(err)
 		}
 	}
 
-	return ParsePostgresError(tx.Commit())
+	return postgres.ParsePostgresError(tx.Commit())
 }
 
-func (repo *UserPostgresqlRepo) GetUserSegments(id int) ([]Segment, error) {
-	var segments []Segment
+func (repo *UserPostgresqlRepo) GetUserSegments(userID int) ([]domain.Segment, error) {
+	var segments []domain.Segment
 
 	query := fmt.Sprintf(`SELECT s.name FROM %s s
 						  INNER JOIN %s us on us.seg_id = s.id
 						  INNER JOIN %s u on us.user_id = u.id
 						  WHERE u.id = $1`, segmentsTable, usersSegmentsTable, usersTable)
 
-	if err := repo.DB.Select(&segments, query, id); err != nil {
-		return []Segment{}, ParsePostgresError(err)
+	if err := repo.DB.Select(&segments, query, userID); err != nil {
+		return []domain.Segment{}, postgres.ParsePostgresError(err)
 	}
 	return segments, nil
+}
+
+func (repo *UserPostgresqlRepo) DeleteExpiredSegments() error {
+	query := fmt.Sprintf(`DELETE FROM %s WHERE expired_at <= $1`, usersSegmentsTable)
+
+	if _, err := repo.DB.Exec(query, time.Now()); err != nil {
+		return postgres.ParsePostgresError(err)
+	}
+	return nil
 }
