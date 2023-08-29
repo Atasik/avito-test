@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"segmenter/internal/config"
 	"segmenter/internal/handler"
 	"segmenter/internal/repository"
 	"segmenter/internal/server"
@@ -12,8 +13,6 @@ import (
 	"segmenter/pkg/postgres"
 	"syscall"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
 const (
@@ -27,18 +26,13 @@ const (
 // @host localhost:8080
 // @BasePath /
 func Run(configPath string) {
-	if err := initConfig(configPath); err != nil {
+	cfg, err := config.InitConfig(configPath)
+	if err != nil {
 		log.Fatal("Error occurred while loading config: ", err.Error())
 	}
 
-	db, err := postgres.NewPostgresqlDB(postgres.Config{
-		Host:     viper.GetString("db.host"),
-		Port:     viper.GetString("db.port"),
-		Username: viper.GetString("db.username"),
-		DBName:   viper.GetString("db.dbname"),
-		SSLMode:  viper.GetString("db.sslmode"),
-		Password: os.Getenv("db_password"),
-	})
+	db, err := postgres.NewPostgresqlDB(cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.Username,
+		cfg.Postgres.DBName, cfg.Postgres.Password, cfg.Postgres.SSLMode)
 	if err != nil {
 		log.Fatal("Error occurred while loading DB: ", err.Error())
 	}
@@ -51,19 +45,19 @@ func Run(configPath string) {
 	}
 	mux := h.InitRoutes()
 
-	srv := server.NewServer(viper.GetString("port"), mux)
+	srv := server.NewServer(cfg, mux)
 	ticker := time.NewTicker(interval)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 
-	// TODO: refactor
 	go func() {
 		if err := srv.Run(); err != nil {
 			log.Println("error happened: ", err.Error())
 		}
 	}()
 
+	// TODO: refactor
 	go func() {
 		for {
 			select {
@@ -92,10 +86,4 @@ func Run(configPath string) {
 	if err := db.Close(); err != nil {
 		log.Printf("error occurred on db connection close: %s", err.Error())
 	}
-}
-
-func initConfig(configPath string) error {
-	viper.AddConfigPath(configPath)
-	viper.SetConfigName("config")
-	return viper.ReadInConfig()
 }

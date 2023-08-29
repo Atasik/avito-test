@@ -11,6 +11,7 @@ CREATE TABLE users
 CREATE TABLE segments
 (
     id serial not null unique,
+    percentage real,
     name varchar(255) not null unique
 );
 

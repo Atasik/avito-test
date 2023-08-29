@@ -1,8 +1,10 @@
-port: "8080"
-
-db:
-  username: "postgres"
-  host: "localhost"
-  port: "5436"
+postgres:
   dbname: "avito"
   sslmode: "disable"
+  refreshInterval: 30s
+
+http:
+  port: "8080"
+  maxHeaderMegaBytes: 1
+  readTimeout: 10s
+  writeTimeout: 10s

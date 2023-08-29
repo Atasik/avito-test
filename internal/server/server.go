@@ -3,27 +3,21 @@ package server
 import (
 	"context"
 	"net/http"
-	"time"
-)
-
-const (
-	maxHeaderBytes = 1 << 20
-	readTimeout    = 20 * time.Second
-	writeTimeout   = 20 * time.Second
+	"segmenter/internal/config"
 )
 
 type Server struct {
 	httpServer *http.Server
 }
 
-func NewServer(port string, handler http.Handler) *Server {
+func NewServer(cfg *config.Config, handler http.Handler) *Server {
 	return &Server{
 		httpServer: &http.Server{
-			Addr:           ":" + port,
+			Addr:           ":" + cfg.HTTP.Port,
 			Handler:        handler,
-			MaxHeaderBytes: maxHeaderBytes,
-			ReadTimeout:    readTimeout,
-			WriteTimeout:   writeTimeout,
+			MaxHeaderBytes: cfg.HTTP.MaxHeaderBytes,
+			ReadTimeout:    cfg.HTTP.ReadTimeout,
+			WriteTimeout:   cfg.HTTP.WriteTimeout,
 		},
 	}
 }
