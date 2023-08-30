@@ -5,6 +5,6 @@ postgres:
 
 http:
   port: "8080"
-  maxHeaderMegaBytes: 1
   readTimeout: 10s
   writeTimeout: 10s
+  maxHeaderMegaBytes: 1

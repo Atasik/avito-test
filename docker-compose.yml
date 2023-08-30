@@ -1,28 +1,37 @@
-version: "3.9"
+version: '3.9'
 
 services:
+  segmenter:
+    image: segmenter-app
+    container_name: segmenter-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+    volumes:
+      - ./.bin/:/root/
+      - ./configs/:/root/configs/
+    env_file:
+      - .env
 
-  # market:
-  #   build: ./
-  #   command: ./wait-for-postgres.sh db ./market
-  #   ports:
-  #     - 8080:8080
-  #   depends_on:
-  #     - db
-  #   environment:
-  #     - DB_PASSWORD=qwerty
-  #     - CLOUD=
-  #     - KEY=
-  #     - SECRET=
-
-  db:
+  postgresdb:
     restart: always
     image: postgres:latest
+    container_name: postgresdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_PASSWORD: "qwerty"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "avito"
     volumes:
       - ./schema/:/docker-entrypoint-initdb.d/
-    environment:
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "qwerty"
-      POSTGRES_DB: "avito"
     ports:
-      - 5436:5432
+      - 5432:5432

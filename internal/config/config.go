@@ -31,7 +31,7 @@ type (
 	}
 
 	HTTPConfig struct {
-		Host           string        `mapstructure:"host"`
+		Host           string
 		Port           string        `mapstructure:"port"`
 		ReadTimeout    time.Duration `mapstructure:"readTimeout"`
 		WriteTimeout   time.Duration `mapstructure:"writeTimeout"`
@@ -42,7 +42,7 @@ type (
 func InitConfig(configPath string) (*Config, error) {
 	setDefaults()
 
-	if err := parseConfigFile(configPath, os.Getenv("APP_ENV")); err != nil {
+	if err := parseConfigFile(configPath); err != nil {
 		return nil, err
 	}
 
@@ -66,21 +66,19 @@ func unmarshal(cfg *Config) error {
 
 func setFromEnv(cfg *Config) {
 	cfg.Postgres.Password = os.Getenv("POSTGRES_PASSWORD")
-	cfg.Postgres.Username = os.Getenv("POSTGRES_USERNAME")
+	cfg.Postgres.Username = os.Getenv("POSTGRES_USER")
 	cfg.Postgres.Port = os.Getenv("POSTGRES_PORT")
 	cfg.Postgres.Host = os.Getenv("POSTGRES_HOST")
 	cfg.HTTP.Host = os.Getenv("HTTP_HOST")
 }
 
-func parseConfigFile(folder, env string) error {
+func parseConfigFile(folder string) error {
 	viper.AddConfigPath(folder)
 	viper.SetConfigName("config")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return err
 	}
-
-	viper.SetConfigName(env)
 
 	return viper.MergeInConfig()
 }
