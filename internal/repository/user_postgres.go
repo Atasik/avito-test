@@ -2,8 +2,10 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"segmenter/internal/domain"
 	"segmenter/pkg/postgres"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -40,42 +42,79 @@ func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsTo
 		return postgres.ParsePostgresError(err)
 	}
 
-	getSegmentIDQuery := fmt.Sprintf("SELECT id FROM %s WHERE name = $1", segmentsTable)
+	selectQuery := fmt.Sprintf("SELECT id FROM %s WHERE name in (?)", segmentsTable)
 
-	queryInterval := fmt.Sprintf("INSERT INTO %s (user_id, seg_id) VALUES($1, $2)", usersSegmentsTable)
-	query = fmt.Sprintf("INSERT INTO %s (user_id, seg_id, expired_at) VALUES($1, $2, $3)", usersSegmentsTable)
+	if len(segmentsToAdd) != 0 {
+		var segmentsBuilder strings.Builder
 
-	for _, seg := range segmentsToAdd {
-		var segID int
-		row := tx.QueryRow(getSegmentIDQuery, seg.Name)
-		if err = row.Scan(&segID); err != nil {
+		idsToAdd := make([]int, len(segmentsToAdd))
+		namesToAdd := make([]string, len(segmentsToAdd))
+		for i, seg := range segmentsToAdd {
+			namesToAdd[i] = seg.Name
+		}
+
+		query, args, err := sqlx.In(selectQuery, namesToAdd)
+		if err != nil {
 			tx.Rollback() //nolint:errcheck
 			return postgres.ParsePostgresError(err)
 		}
 
-		if time.Time(seg.ExpiredAt).IsZero() {
-			if _, err = tx.Exec(queryInterval, userID, segID); err != nil {
-				tx.Rollback() //nolint:errcheck
-				return postgres.ParsePostgresError(err)
-			}
-		} else {
-			if _, err = tx.Exec(query, userID, segID, time.Time(seg.ExpiredAt)); err != nil {
-				tx.Rollback() //nolint:errcheck
-				return postgres.ParsePostgresError(err)
-			}
+		query = repo.DB.Rebind(query)
+
+		if err = repo.DB.Select(&idsToAdd, query, args...); err != nil {
+			tx.Rollback() //nolint:errcheck
+			return postgres.ParsePostgresError(err)
+		}
+		segmentsBuilder.WriteString(fmt.Sprintf("INSERT INTO %s (user_id, seg_id, expired_at) VALUES ", usersSegmentsTable))
+
+		args = []interface{}{}
+		argId := 1
+		for idx, seg := range segmentsToAdd {
+			args = append(args, userID)
+			args = append(args, idsToAdd[idx])
+			args = append(args, seg.ExpiredAt)
+			segmentsBuilder.WriteString(fmt.Sprintf(`($%d,$%d,$%d),`, argId, argId+1, argId+2))
+			argId += 3
+		}
+
+		query = strings.TrimSuffix(segmentsBuilder.String(), ",")
+
+		_, err = repo.DB.Exec(query, args...)
+		if err != nil {
+			tx.Rollback() //nolint:errcheck
+			return postgres.ParsePostgresError(err)
 		}
 	}
 
-	query = fmt.Sprintf("DELETE FROM %s WHERE user_id = $1 AND seg_id = $2", usersSegmentsTable)
-	for _, seg := range segmentsToDelete {
-		var segID int
-		row := tx.QueryRow(getSegmentIDQuery, seg.Name)
-		if err = row.Scan(&segID); err != nil {
+	if len(segmentsToDelete) != 0 {
+		idsToDelete := make([]int, len(segmentsToDelete))
+		namesToDelete := make([]string, len(segmentsToDelete))
+		for i, seg := range segmentsToDelete {
+			namesToDelete[i] = seg.Name
+		}
+
+		query, args, err := sqlx.In(selectQuery, namesToDelete)
+		if err != nil {
 			tx.Rollback() //nolint:errcheck
 			return postgres.ParsePostgresError(err)
 		}
 
-		_, err := tx.Exec(query, userID, segID)
+		query = repo.DB.Rebind(query)
+
+		if err = repo.DB.Select(&idsToDelete, query, args...); err != nil {
+			tx.Rollback() //nolint:errcheck
+			return postgres.ParsePostgresError(err)
+		}
+
+		query, args, err = sqlx.In(fmt.Sprintf("DELETE FROM %s WHERE seg_id IN (?) AND user_id = ? ", usersSegmentsTable), idsToDelete, userID)
+		if err != nil {
+			tx.Rollback() //nolint:errcheck
+			return postgres.ParsePostgresError(err)
+		}
+
+		query = repo.DB.Rebind(query)
+
+		_, err = repo.DB.Exec(query, args...)
 		if err != nil {
 			tx.Rollback() //nolint:errcheck
 			return postgres.ParsePostgresError(err)
@@ -88,7 +127,7 @@ func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsTo
 func (repo *UserPostgresqlRepo) GetUserSegments(userID int) ([]domain.Segment, error) {
 	var segments []domain.Segment
 
-	query := fmt.Sprintf(`SELECT s.name FROM %s s
+	query := fmt.Sprintf(`SELECT s.name, us.expired_at FROM %s s
 						  INNER JOIN %s us on us.seg_id = s.id
 						  INNER JOIN %s u on us.user_id = u.id
 						  WHERE u.id = $1`, segmentsTable, usersSegmentsTable, usersTable)
@@ -96,6 +135,8 @@ func (repo *UserPostgresqlRepo) GetUserSegments(userID int) ([]domain.Segment, e
 	if err := repo.DB.Select(&segments, query, userID); err != nil {
 		return []domain.Segment{}, postgres.ParsePostgresError(err)
 	}
+
+	log.Println(segments)
 	return segments, nil
 }
 
