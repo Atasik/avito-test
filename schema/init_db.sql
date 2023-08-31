@@ -17,7 +17,6 @@ CREATE TABLE segments
 
 CREATE TABLE users_segments
 (
-    -- id serial not null unique,
     user_id int references users (id) on delete cascade not null,
     seg_id int references segments (id) on delete cascade not null,
     expired_at timestamp,
@@ -28,11 +27,15 @@ CREATE TABLE history
 (
     id serial not null unique,
     user_id int references users (id) on delete cascade not null,
-    -- seg_id int references segments (id) on delete cascade not nulls,
     segment varchar(255) not null,
     operation varchar(255) not null,
     created_at timestamp not null
 );
+
+INSERT INTO segments(name, percentage) VALUES('AVITO_VOICE_MESSAGES', 0.2);
+INSERT INTO segments(name, percentage) VALUES('AVITO_PERFORMANCE_VAS', 0.2);
+INSERT INTO segments(name, percentage) VALUES('AVITO_DISCOUNT_30', 0.2);
+INSERT INTO segments(name) VALUES('AVITO_DISCOUNT_50');
 
 CREATE OR REPLACE FUNCTION history_users_segments_insert()
 RETURNS TRIGGER AS 
@@ -63,13 +66,28 @@ $$
 LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION auto_users_segments_insert()
-RETURN TRIGGER AS
+RETURNS TRIGGER AS
 $$
 BEGIN
-    INSERT INTO 
+    INSERT INTO users_segments (user_id, seg_id, expired_at)
+    SELECT NEW.user_id, subquery.seg_id, NULL
+    FROM (
+        SELECT
+            s.id AS seg_id,
+            s.percentage AS segment_percentage,
+            COALESCE(COUNT(us.seg_id), 0) * 100.0 / NULLIF((SELECT COUNT(*) FROM users_segments), 0) AS fill_percentage
+        FROM segments s
+        LEFT JOIN users_segments us ON us.seg_id = s.id
+        GROUP BY s.id, s.percentage
+        ORDER BY s.id
+    ) AS subquery
+    WHERE subquery.segment_percentage > subquery.fill_percentage;
+    
+    RETURN NEW;
 END;
 $$
 LANGUAGE 'plpgsql';
+
 
 CREATE TRIGGER history_insert
     AFTER INSERT ON users_segments
@@ -84,20 +102,4 @@ CREATE TRIGGER history_delete
 CREATE TRIGGER auto_insert
     AFTER INSERT ON users_segments
     FOR EACH ROW
-    EXECUTE FUNCTION
-
-
-INSERT INTO segments(name) VALUES('AVITO_VOICE_MESSAGES');
-INSERT INTO segments(name) VALUES('AVITO_PERFORMANCE_VAS');
-INSERT INTO segments(name) VALUES('AVITO_DISCOUNT_30');
-INSERT INTO segments(name) VALUES('AVITO_DISCOUNT_50');
-
--- INSERT INTO users(ID) VALUES(1000);
--- INSERT INTO users(ID) VALUES(1002);
--- INSERT INTO users(ID) VALUES(1004);
-
--- INSERT INTO users_segments(user_id, seg_id) VALUES(1000, 1);
--- INSERT INTO users_segments(user_id, seg_id) VALUES(1000, 2);
--- INSERT INTO users_segments(user_id, seg_id) VALUES(1000, 3);
--- INSERT INTO users_segments(user_id, seg_id) VALUES(1002, 1);
--- INSERT INTO users_segments(user_id, seg_id) VALUES(1002, 4);
+    EXECUTE FUNCTION auto_users_segments_insert();

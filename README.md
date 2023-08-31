@@ -35,17 +35,19 @@ curl -X 'POST' \
 }'
 
 3. Добавляю user'а с id=4 и одним сегментом
-{
+curl -X 'POST' \
+  'http://localhost:8080/api/segment/user' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
   "id": 4,
   "segmentsToAdd": [
     {
       "expired_at": "2024-08-27",
       "name": "AVITO_VOICE_MESSAGES"
     }
-  ],
-  "segmentsToDelete": [
   ]
-}
+}'
 
 4. Добавляю сегмент AVITO_TEST с процентом распределения 25%
 curl -X 'POST' \
