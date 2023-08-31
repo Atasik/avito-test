@@ -13,20 +13,23 @@ import (
 	"segmenter/pkg/postgres"
 	"syscall"
 	"time"
+
+	"github.com/go-playground/validator/v10"
 )
 
 const (
-	interval = 30 * time.Second
+	interval   = 30 * time.Second
+	reportsDir = "./reports/"
 )
 
 // @title Avito Backend Trainee Assignment
-// @version 1.0
+// @version 2.0
 // @description тех. задание с отбора на стажировку в Avito
 
 // @host localhost:8080
 // @BasePath /
-func Run(configPath string) {
-	cfg, err := config.InitConfig(configPath)
+func Run(configDir string) {
+	cfg, err := config.InitConfig(configDir)
 	if err != nil {
 		log.Fatal("Error occurred while loading config: ", err.Error())
 	}
@@ -37,13 +40,16 @@ func Run(configPath string) {
 		log.Fatal("Error occurred while loading DB: ", err.Error())
 	}
 
-	repos := repository.NewRepository(db)
+	repos := repository.NewRepository(db, reportsDir)
 	services := service.NewService(repos)
 
+	validate := validator.New()
+
 	h := &handler.Handler{
-		Services: services,
+		Services:  services,
+		Validator: validate,
 	}
-	mux := h.InitRoutes()
+	mux := h.InitRoutes(reportsDir)
 
 	srv := server.NewServer(cfg, mux)
 	ticker := time.NewTicker(interval)
@@ -62,10 +68,10 @@ func Run(configPath string) {
 		for {
 			select {
 			case <-ticker.C:
-				if err := services.DeleteExpiredSegments(); err != nil {
+				if err := services.User.DeleteExpiredSegments(); err != nil {
 					log.Println("error happened: ", err.Error())
 				}
-				log.Println("database was updated")
+				log.Println("Database was updated")
 			case <-quit:
 				ticker.Stop()
 				return

@@ -92,9 +92,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "id",
+                        "description": "OK",
                         "schema": {
-                            "type": "integer"
+                            "$ref": "#/definitions/handler.statusResponse"
                         }
                     },
                     "400": {
@@ -147,9 +147,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "updated",
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/handler.statusResponse"
                         }
                     },
                     "400": {
@@ -293,28 +293,45 @@ const docTemplate = `{
     "definitions": {
         "domain.Segment": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
                 "expired_at": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-03-23"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "AVITO_TEST"
+                },
+                "percentage": {
+                    "type": "number",
+                    "example": 0.25
                 }
             }
         },
         "domain.User": {
             "type": "object",
+            "required": [
+                "id"
+            ],
             "properties": {
                 "id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
         "handler.addUserInput": {
             "type": "object",
+            "required": [
+                "id"
+            ],
             "properties": {
                 "id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "segmentsToAdd": {
                     "type": "array",
@@ -340,12 +357,17 @@ const docTemplate = `{
         },
         "handler.getReportInput": {
             "type": "object",
+            "required": [
+                "id"
+            ],
             "properties": {
                 "id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "period": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2023-09"
                 }
             }
         },
@@ -359,18 +381,26 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "handler.statusResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
-	BasePath:         "",
+	Version:          "2.0",
+	Host:             "localhost:8080",
+	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Avito Backend Trainee Assignment",
+	Description:      "тех. задание с отбора на стажировку в Avito",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

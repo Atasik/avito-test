@@ -1,19 +1,31 @@
+basePath: /
 definitions:
   domain.Segment:
     properties:
       expired_at:
+        example: "2024-03-23"
         type: string
       name:
+        example: AVITO_TEST
         type: string
+      percentage:
+        example: 0.25
+        type: number
+    required:
+    - name
     type: object
   domain.User:
     properties:
       id:
+        example: 1
         type: integer
+    required:
+    - id
     type: object
   handler.addUserInput:
     properties:
       id:
+        example: 1
         type: integer
       segmentsToAdd:
         items:
@@ -23,6 +35,8 @@ definitions:
         items:
           $ref: '#/definitions/domain.Segment'
         type: array
+    required:
+    - id
     type: object
   handler.errorResponse:
     properties:
@@ -32,9 +46,13 @@ definitions:
   handler.getReportInput:
     properties:
       id:
+        example: 1
         type: integer
       period:
+        example: 2023-09
         type: string
+    required:
+    - id
     type: object
   handler.getSegmentsResponse:
     properties:
@@ -43,8 +61,17 @@ definitions:
           $ref: '#/definitions/domain.Segment'
         type: array
     type: object
+  handler.statusResponse:
+    properties:
+      status:
+        type: string
+    type: object
+host: localhost:8080
 info:
   contact: {}
+  description: тех. задание с отбора на стажировку в Avito
+  title: Avito Backend Trainee Assignment
+  version: "2.0"
 paths:
   /api/segment:
     delete:
@@ -60,9 +87,9 @@ paths:
           $ref: '#/definitions/domain.Segment'
       responses:
         "200":
-          description: id
+          description: OK
           schema:
-            type: integer
+            $ref: '#/definitions/handler.statusResponse'
         "400":
           description: Bad Request
           schema:
@@ -131,9 +158,9 @@ paths:
           $ref: '#/definitions/handler.addUserInput'
       responses:
         "200":
-          description: updated
+          description: OK
           schema:
-            type: string
+            $ref: '#/definitions/handler.statusResponse'
         "400":
           description: Bad Request
           schema:

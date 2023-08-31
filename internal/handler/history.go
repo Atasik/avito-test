@@ -2,15 +2,24 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"segmenter/pkg/timejson"
-	"time"
 )
 
+var errNilTime = errors.New("time is nil")
+
 type getReportInput struct {
-	ID     int                    `json:"id"`
-	Period timejson.YearMonthTime `json:"period"`
+	ID     int                    `json:"id" example:"1" validate:"required,gt=0"`
+	Period timejson.YearMonthTime `json:"period" swaggertype:"primitive,string" example:"2023-09"`
+}
+
+func (inp getReportInput) Validate() error {
+	if inp.Period.Time.IsZero() {
+		return errNilTime
+	}
+	return nil
 }
 
 // @Summary Get Report
@@ -24,8 +33,8 @@ type getReportInput struct {
 // @Failure	500			{object}	errorResponse
 // @Failure	default		{object}	errorResponse
 // @Router		/api/user/history [post]
-func (h *Handler) GetReport(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", appJSON)
+func (h *Handler) getReport(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "text/csv")
 	if r.Header.Get("Content-Type") != appJSON {
 		newErrorResponse(w, "unknown payload", http.StatusBadRequest)
 		return
@@ -45,13 +54,24 @@ func (h *Handler) GetReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reportName, err := h.Services.CreateReport(time.Time(inp.Period), inp.ID)
+	err = h.Validator.Struct(inp)
+	if err != nil {
+		newErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = inp.Validate()
+	if err != nil {
+		newErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	reportName, err := h.Services.History.CreateReport(inp.Period.Time, inp.ID)
 	if err != nil {
 		newErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// TODO: refactor, remove hardcode, create cfg
 	resp, err := json.Marshal(map[string]interface{}{
 		"link": r.Host + "/reports/" + reportName,
 	})

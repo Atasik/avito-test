@@ -28,13 +28,13 @@ CREATE TABLE history
 (
     id serial not null unique,
     user_id int references users (id) on delete cascade not null,
-    -- seg_id int references segments (id) on delete cascade not null,
+    -- seg_id int references segments (id) on delete cascade not nulls,
     segment varchar(255) not null,
     operation varchar(255) not null,
     created_at timestamp not null
 );
 
-CREATE OR REPLACE FUNCTION update_insert_history()
+CREATE OR REPLACE FUNCTION history_users_segments_insert()
 RETURNS TRIGGER AS 
 $$
 BEGIN 
@@ -48,7 +48,7 @@ END;
 $$
 LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION update_delete_history()
+CREATE OR REPLACE FUNCTION history_users_segments_delete()
 RETURNS TRIGGER AS 
 $$
 BEGIN
@@ -62,15 +62,29 @@ END;
 $$
 LANGUAGE 'plpgsql';
 
-CREATE TRIGGER insert_entry
+CREATE OR REPLACE FUNCTION auto_users_segments_insert()
+RETURN TRIGGER AS
+$$
+BEGIN
+    INSERT INTO 
+END;
+$$
+LANGUAGE 'plpgsql';
+
+CREATE TRIGGER history_insert
     AFTER INSERT ON users_segments
     FOR EACH ROW
-    EXECUTE FUNCTION update_insert_history();
+    EXECUTE FUNCTION history_users_segments_insert();
 
-CREATE TRIGGER delete_entry
+CREATE TRIGGER history_delete
     AFTER DELETE ON users_segments
     FOR EACH ROW
-    EXECUTE FUNCTION update_delete_history();
+    EXECUTE FUNCTION history_users_segments_delete();
+
+CREATE TRIGGER auto_insert
+    AFTER INSERT ON users_segments
+    FOR EACH ROW
+    EXECUTE FUNCTION
 
 
 INSERT INTO segments(name) VALUES('AVITO_VOICE_MESSAGES');

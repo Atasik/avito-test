@@ -3,12 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"segmenter/internal/domain"
 )
 
 type addUserInput struct {
-	ID               int              `json:"id"`
+	ID               int              `json:"id" example:"1" validate:"required,gt=0"`
 	SegmentsToDelete []domain.Segment `json:"segmentsToDelete"`
 	SegmentsToAdd    []domain.Segment `json:"segmentsToAdd"`
 }
@@ -19,12 +20,12 @@ type addUserInput struct {
 // @Accept json
 // @Product json
 // @Param   input body addUserInput true "user id, segments to delete/add"
-// @Success	200		    {string}	string     "updated"
+// @Success	200		    {object}	statusResponse
 // @Failure	400,404		{object}	errorResponse
 // @Failure	500			{object}	errorResponse
 // @Failure	default		{object}	errorResponse
 // @Router		/api/segment/user [post]
-func (h *Handler) AddUserToSegment(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) addUserToSegment(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", appJSON)
 	if r.Header.Get("Content-Type") != appJSON {
 		newErrorResponse(w, "unknown payload", http.StatusBadRequest)
@@ -41,20 +42,24 @@ func (h *Handler) AddUserToSegment(w http.ResponseWriter, r *http.Request) {
 	var inp addUserInput
 	err = json.Unmarshal(body, &inp)
 	if err != nil {
+		log.Println("kekw", err.Error())
 		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
 
-	err = h.Services.UpsertUser(inp.ID, inp.SegmentsToAdd, inp.SegmentsToDelete)
+	err = h.Validator.Struct(inp)
+	if err != nil {
+		newErrorResponse(w, "bad input", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Services.User.UpsertUserSegments(inp.ID, inp.SegmentsToAdd, inp.SegmentsToDelete)
 	if err != nil {
 		newErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// TODO: refactor, remove hardcode
-	resp, err := json.Marshal(map[string]interface{}{
-		"updated": "done",
-	})
+	resp, err := json.Marshal(statusResponse{"done"})
 	if err != nil {
 		newErrorResponse(w, `can't create payload`, http.StatusInternalServerError)
 		return
@@ -78,7 +83,7 @@ func (h *Handler) AddUserToSegment(w http.ResponseWriter, r *http.Request) {
 // @Failure	500			{object}	errorResponse
 // @Failure	default		{object}	errorResponse
 // @Router		/api/user [post]
-func (h *Handler) GetUserSegments(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getUserSegments(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", appJSON)
 	if r.Header.Get("Content-Type") != appJSON {
 		newErrorResponse(w, "unknown payload", http.StatusBadRequest)
@@ -98,7 +103,14 @@ func (h *Handler) GetUserSegments(w http.ResponseWriter, r *http.Request) {
 		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
-	segments, err := h.Services.GetUserSegments(user.ID)
+
+	err = h.Validator.Struct(user)
+	if err != nil {
+		newErrorResponse(w, "bad input", http.StatusBadRequest)
+		return
+	}
+
+	segments, err := h.Services.User.GetSegments(user.ID)
 	if err != nil {
 		newErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return

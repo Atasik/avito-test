@@ -18,7 +18,7 @@ import (
 // @Failure	500			{object}	errorResponse
 // @Failure	default		{object}	errorResponse
 // @Router		/api/segment [post]
-func (h *Handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createSegment(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", appJSON)
 	if r.Header.Get("Content-Type") != appJSON {
 		newErrorResponse(w, "unknown payload", http.StatusBadRequest)
@@ -38,13 +38,19 @@ func (h *Handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
-	id, err := h.Services.CreateSegment(segment)
+
+	err = h.Validator.Struct(segment)
+	if err != nil {
+		newErrorResponse(w, "bad input", http.StatusBadRequest)
+		return
+	}
+
+	id, err := h.Services.Segment.Create(segment)
 	if err != nil {
 		newErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// TODO: refactor, remove hardcode
 	resp, err := json.Marshal(map[string]interface{}{
 		"id": id,
 	})
@@ -66,12 +72,12 @@ func (h *Handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 // @Accept json
 // @Product json
 // @Param   input body domain.Segment true "Segment content"
-// @Success	200		    {integer}	integer     "id"
+// @Success	200		    {object}	statusResponse
 // @Failure	400,404		{object}	errorResponse
 // @Failure	500			{object}	errorResponse
 // @Failure	default		{object}	errorResponse
 // @Router		/api/segment [delete]
-func (h *Handler) DeleteSegment(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteSegment(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", appJSON)
 	if r.Header.Get("Content-Type") != appJSON {
 		newErrorResponse(w, "unknown payload", http.StatusBadRequest)
@@ -91,16 +97,20 @@ func (h *Handler) DeleteSegment(w http.ResponseWriter, r *http.Request) {
 		newErrorResponse(w, "can't unpack payload", http.StatusBadRequest)
 		return
 	}
-	err = h.Services.DeleteSegment(segment)
+
+	err = h.Validator.Struct(segment)
+	if err != nil {
+		newErrorResponse(w, "bad input", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Services.Segment.Delete(segment)
 	if err != nil {
 		newErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// TODO: refactor, remove hardcode
-	resp, err := json.Marshal(map[string]interface{}{
-		"deleted": "done",
-	})
+	resp, err := json.Marshal(statusResponse{"done"})
 	if err != nil {
 		newErrorResponse(w, `can't create payload`, http.StatusInternalServerError)
 		return

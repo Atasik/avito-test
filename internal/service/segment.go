@@ -5,11 +5,6 @@ import (
 	"segmenter/internal/repository"
 )
 
-type Segment interface {
-	CreateSegment(seg domain.Segment) (int, error)
-	DeleteSegment(seg domain.Segment) error
-}
-
 type SegmentService struct {
 	segmentRepo repository.SegmentRepo
 }
@@ -18,10 +13,10 @@ func NewSegmentService(segmentRepo repository.SegmentRepo) *SegmentService {
 	return &SegmentService{segmentRepo: segmentRepo}
 }
 
-func (s *SegmentService) CreateSegment(seg domain.Segment) (int, error) {
-	return s.segmentRepo.CreateSegment(seg)
+func (s *SegmentService) Create(seg domain.Segment) (int, error) {
+	return s.segmentRepo.Create(seg)
 }
 
-func (s *SegmentService) DeleteSegment(seg domain.Segment) error {
-	return s.segmentRepo.DeleteSegment(seg)
+func (s *SegmentService) Delete(seg domain.Segment) error {
+	return s.segmentRepo.Delete(seg)
 }

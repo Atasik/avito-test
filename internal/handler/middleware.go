@@ -11,7 +11,7 @@ func panicMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Println("recovered", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				newErrorResponse(w, `Internal server error`, http.StatusInternalServerError)
 			}
 		}()
 		next.ServeHTTP(w, r)

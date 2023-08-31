@@ -14,10 +14,6 @@ var (
 	ErrNotFound      = errors.New("not found")
 )
 
-// func (User) TableName() string {
-// 	return üsers
-// }
-
 func NewPostgresqlDB(host, port, username, dbname, password, sslmode string) (*sqlx.DB, error) {
 	db, err := sqlx.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
 		host, port, username, dbname, password, sslmode))

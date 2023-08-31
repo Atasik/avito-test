@@ -1,32 +1,50 @@
 package timejson
 
 import (
+	"database/sql/driver"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
 
-type YearMonthTime time.Time
+type YearMonthTime struct {
+	time.Time
+}
 
 const YearMonthOnly = "2006-01"
 
-func (y *YearMonthTime) UnmarshalJSON(b []byte) error {
-	value := strings.Trim(string(b), `"`)
-	if value == "" || value == "null" {
-		return nil
+func (t *YearMonthTime) UnmarshalJSON(b []byte) (err error) {
+	s := strings.Trim(string(b), `"`) // remove quotes
+	if s == "null" || s == "" {
+		return
 	}
-
-	t, err := time.Parse(YearMonthOnly, value)
+	t.Time, err = time.Parse(YearMonthOnly, s)
 	if err != nil {
 		return err
 	}
-
-	*y = YearMonthTime(t)
 	return nil
 }
 
-func (y YearMonthTime) MarshalJSON() ([]byte, error) {
-	if time.Time(y).IsZero() {
+func (t YearMonthTime) MarshalJSON() ([]byte, error) {
+	if t.Time.IsZero() {
 		return nil, nil
 	}
-	return []byte(`"` + time.Time(y).Format(YearMonthOnly) + `"`), nil
+	return []byte(fmt.Sprintf(`"%s"`, t.Time.Format(YearMonthOnly))), nil
+}
+
+func (t *YearMonthTime) Scan(v interface{}) error {
+	ti, ok := v.(time.Time)
+	if !ok {
+		return errors.New("invalid time format")
+	}
+	*t = YearMonthTime{Time: ti}
+	return nil
+}
+
+func (t YearMonthTime) Value() (driver.Value, error) {
+	if t.IsZero() {
+		return nil, nil
+	}
+	return t.Time, nil
 }

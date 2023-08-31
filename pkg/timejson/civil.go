@@ -1,32 +1,44 @@
 package timejson
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"strings"
 	"time"
 )
 
-type CivilTime time.Time
+type CivilTime struct {
+	time.Time
+}
 
-const YMS = "2006-01-02"
-
-func (c *CivilTime) UnmarshalJSON(b []byte) error {
-	value := strings.Trim(string(b), `"`)
-	if value == "" || value == "null" {
-		return nil
+func (t *CivilTime) UnmarshalJSON(b []byte) (err error) {
+	s := strings.Trim(string(b), `"`) // remove quotes
+	if s == "null" || s == "" {
+		return
 	}
-
-	t, err := time.Parse(YMS, value)
+	t.Time, err = time.Parse(time.DateOnly, s)
 	if err != nil {
 		return err
 	}
-
-	*c = CivilTime(t)
 	return nil
 }
 
-func (c CivilTime) MarshalJSON() ([]byte, error) {
-	if time.Time(c).IsZero() {
+func (t CivilTime) MarshalJSON() ([]byte, error) {
+	if t.Time.IsZero() {
 		return nil, nil
 	}
-	return []byte(`"` + time.Time(c).Format(YMS) + `"`), nil
+	return []byte(fmt.Sprintf(`"%s"`, t.Time.Format(time.DateOnly))), nil
+}
+
+func (t *CivilTime) Scan(v interface{}) error {
+	ti := v.(time.Time)
+	*t = CivilTime{Time: ti}
+	return nil
+}
+
+func (t CivilTime) Value() (driver.Value, error) {
+	if t.IsZero() {
+		return nil, nil
+	}
+	return t.Time, nil
 }
