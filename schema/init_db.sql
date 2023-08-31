@@ -32,11 +32,6 @@ CREATE TABLE history
     created_at timestamp not null
 );
 
-INSERT INTO segments(name, percentage) VALUES('AVITO_VOICE_MESSAGES', 0.2);
-INSERT INTO segments(name, percentage) VALUES('AVITO_PERFORMANCE_VAS', 0.2);
-INSERT INTO segments(name, percentage) VALUES('AVITO_DISCOUNT_30', 0.2);
-INSERT INTO segments(name) VALUES('AVITO_DISCOUNT_50');
-
 CREATE OR REPLACE FUNCTION history_users_segments_insert()
 RETURNS TRIGGER AS 
 $$
