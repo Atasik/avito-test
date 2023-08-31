@@ -1,8 +1,8 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"segmenter/internal/domain"
 	"segmenter/pkg/postgres"
 	"strings"
@@ -11,14 +11,11 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const (
-	DELETION = "delete"
-	ADDITION = "add"
-)
+var errNoSegments = errors.New("there is no such segments in db")
 
 type UserRepo interface {
-	UpsertUser(userID int, segmentsToAdd, segmentsToDelete []domain.Segment) error
-	GetUserSegments(userID int) ([]domain.Segment, error)
+	UpsertUserSegments(userID int, segmentsToAdd, segmentsToDelete []domain.Segment) error
+	GetSegments(userID int) ([]domain.Segment, error)
 	DeleteExpiredSegments() error
 }
 
@@ -30,9 +27,10 @@ func NewUserPostgresqlRepo(db *sqlx.DB) *UserPostgresqlRepo {
 	return &UserPostgresqlRepo{DB: db}
 }
 
-func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsToDelete []domain.Segment) error {
+func (repo *UserPostgresqlRepo) UpsertUserSegments(userID int, segmentsToAdd, segmentsToDelete []domain.Segment) error {
 	tx, err := repo.DB.Begin()
 	if err != nil {
+		tx.Rollback()
 		return postgres.ParsePostgresError(err)
 	}
 
@@ -42,7 +40,7 @@ func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsTo
 		return postgres.ParsePostgresError(err)
 	}
 
-	selectQuery := fmt.Sprintf("SELECT id FROM %s WHERE name in (?)", segmentsTable)
+	selectQuery := fmt.Sprintf("SELECT id FROM %s WHERE name IN (?)", segmentsTable)
 
 	if len(segmentsToAdd) != 0 {
 		var segmentsBuilder strings.Builder
@@ -65,6 +63,12 @@ func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsTo
 			tx.Rollback() //nolint:errcheck
 			return postgres.ParsePostgresError(err)
 		}
+
+		if len(idsToAdd) == 0 {
+			tx.Rollback()
+			return errNoSegments
+		}
+
 		segmentsBuilder.WriteString(fmt.Sprintf("INSERT INTO %s (user_id, seg_id, expired_at) VALUES ", usersSegmentsTable))
 
 		args = []interface{}{}
@@ -79,7 +83,7 @@ func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsTo
 
 		query = strings.TrimSuffix(segmentsBuilder.String(), ",")
 
-		_, err = repo.DB.Exec(query, args...)
+		_, err = tx.Exec(query, args...)
 		if err != nil {
 			tx.Rollback() //nolint:errcheck
 			return postgres.ParsePostgresError(err)
@@ -106,6 +110,11 @@ func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsTo
 			return postgres.ParsePostgresError(err)
 		}
 
+		if len(idsToDelete) == 0 {
+			tx.Rollback()
+			return errNoSegments
+		}
+
 		query, args, err = sqlx.In(fmt.Sprintf("DELETE FROM %s WHERE seg_id IN (?) AND user_id = ? ", usersSegmentsTable), idsToDelete, userID)
 		if err != nil {
 			tx.Rollback() //nolint:errcheck
@@ -114,7 +123,7 @@ func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsTo
 
 		query = repo.DB.Rebind(query)
 
-		_, err = repo.DB.Exec(query, args...)
+		_, err = tx.Exec(query, args...)
 		if err != nil {
 			tx.Rollback() //nolint:errcheck
 			return postgres.ParsePostgresError(err)
@@ -124,7 +133,7 @@ func (repo *UserPostgresqlRepo) UpsertUser(userID int, segmentsToAdd, segmentsTo
 	return postgres.ParsePostgresError(tx.Commit())
 }
 
-func (repo *UserPostgresqlRepo) GetUserSegments(userID int) ([]domain.Segment, error) {
+func (repo *UserPostgresqlRepo) GetSegments(userID int) ([]domain.Segment, error) {
 	var segments []domain.Segment
 
 	query := fmt.Sprintf(`SELECT s.name, us.expired_at FROM %s s
@@ -136,7 +145,6 @@ func (repo *UserPostgresqlRepo) GetUserSegments(userID int) ([]domain.Segment, e
 		return []domain.Segment{}, postgres.ParsePostgresError(err)
 	}
 
-	log.Println(segments)
 	return segments, nil
 }
 
